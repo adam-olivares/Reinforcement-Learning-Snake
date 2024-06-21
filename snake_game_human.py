@@ -2,6 +2,7 @@ import pygame
 import random
 from enum import Enum
 from collections import namedtuple
+import argparse
 
 pygame.init()
 font = pygame.font.Font('arial.ttf', 25)
@@ -22,14 +23,14 @@ BLUE1 = (0, 0, 255)
 BLUE2 = (0, 100, 255)
 BLACK = (0,0,0)
 
-BLOCK_SIZE = 20
-SPEED = 20
-
 class SnakeGame:
     
-    def __init__(self, w=640, h=480):
+    def __init__(self, w=640, h=480, block_size=20, speed=20):
         self.w = w
         self.h = h
+        self.block_size = block_size
+        self.speed = speed
+
         # init display
         self.display = pygame.display.set_mode((self.w, self.h))
         pygame.display.set_caption('Snake')
@@ -40,16 +41,16 @@ class SnakeGame:
         
         self.head = Point(self.w/2, self.h/2)
         self.snake = [self.head, 
-                      Point(self.head.x-BLOCK_SIZE, self.head.y),
-                      Point(self.head.x-(2*BLOCK_SIZE), self.head.y)]
+                      Point(self.head.x-self.block_size, self.head.y),
+                      Point(self.head.x-(2*self.block_size), self.head.y)]
         
         self.score = 0
         self.food = None
         self._place_food()
         
     def _place_food(self):
-        x = random.randint(0, (self.w-BLOCK_SIZE )//BLOCK_SIZE )*BLOCK_SIZE 
-        y = random.randint(0, (self.h-BLOCK_SIZE )//BLOCK_SIZE )*BLOCK_SIZE
+        x = random.randint(0, (self.w-self.block_size )//self.block_size )*self.block_size 
+        y = random.randint(0, (self.h-self.block_size )//self.block_size )*self.block_size
         self.food = Point(x, y)
         if self.food in self.snake:
             self._place_food()
@@ -89,13 +90,14 @@ class SnakeGame:
         
         # 5. update ui and clock
         self._update_ui()
-        self.clock.tick(SPEED)
+        self.clock.tick(self.speed)
+
         # 6. return game over and score
         return game_over, self.score
     
     def _is_collision(self):
         # hits boundary
-        if self.head.x > self.w - BLOCK_SIZE or self.head.x < 0 or self.head.y > self.h - BLOCK_SIZE or self.head.y < 0:
+        if self.head.x > self.w - self.block_size or self.head.x < 0 or self.head.y > self.h - self.block_size or self.head.y < 0:
             return True
         # hits itself
         if self.head in self.snake[1:]:
@@ -107,10 +109,10 @@ class SnakeGame:
         self.display.fill(BLACK)
         
         for pt in self.snake:
-            pygame.draw.rect(self.display, BLUE1, pygame.Rect(pt.x, pt.y, BLOCK_SIZE, BLOCK_SIZE))
+            pygame.draw.rect(self.display, BLUE1, pygame.Rect(pt.x, pt.y, self.block_size, self.block_size))
             pygame.draw.rect(self.display, BLUE2, pygame.Rect(pt.x+4, pt.y+4, 12, 12))
             
-        pygame.draw.rect(self.display, RED, pygame.Rect(self.food.x, self.food.y, BLOCK_SIZE, BLOCK_SIZE))
+        pygame.draw.rect(self.display, RED, pygame.Rect(self.food.x, self.food.y, self.block_size, self.block_size))
         
         text = font.render("Score: " + str(self.score), True, WHITE)
         self.display.blit(text, [0, 0])
@@ -120,20 +122,28 @@ class SnakeGame:
         x = self.head.x
         y = self.head.y
         if direction == Direction.RIGHT:
-            x += BLOCK_SIZE
+            x += self.block_size
         elif direction == Direction.LEFT:
-            x -= BLOCK_SIZE
+            x -= self.block_size
         elif direction == Direction.DOWN:
-            y += BLOCK_SIZE
+            y += self.block_size
         elif direction == Direction.UP:
-            y -= BLOCK_SIZE
+            y -= self.block_size
             
         self.head = Point(x, y)
             
 
 if __name__ == '__main__':
-    game = SnakeGame()
     
+    parser = argparse.ArgumentParser(description='Snake Game Parameters')
+    parser.add_argument('--block_size', type=int, default=20, help='Size of the snake blocks')
+    parser.add_argument('--speed', type=int, default=20, help='Speed of the game')
+    parser.add_argument('--width', type=int, default=640, help='Width of the game window')
+    parser.add_argument('--height', type=int, default=480, help='Height of the game window')
+    args = parser.parse_args()
+    
+    game = SnakeGame(w=args.width, h=args.height, block_size=args.block_size, speed=args.speed)
+
     # game loop
     while True:
         game_over, score = game.play_step()
@@ -142,6 +152,5 @@ if __name__ == '__main__':
             break
         
     print('Final Score', score)
-        
         
     pygame.quit()
