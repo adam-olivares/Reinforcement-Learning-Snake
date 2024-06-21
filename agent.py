@@ -5,20 +5,18 @@ from collections import deque
 from game import SnakeGameAI, Direction, Point
 from model import Linear_QNet, QTrainer
 from helper import plot
-
-MAX_MEMORY = 100_000
-BATCH_SIZE = 1000
-LR = 0.001
+import argparse
 
 class Agent:
 
-    def __init__(self):
+    def __init__(self, discount, max_memory, learning_rate, batch_size):
         self.n_games = 0
         self.epsilon = 0 # randomness
-        self.gamma = 0.9 # discount rate
-        self.memory = deque(maxlen=MAX_MEMORY) # popleft()
+        self.gamma = discount # discount rate
+        self.batch_size = batch_size
+        self.memory = deque(maxlen=max_memory) # popleft()
         self.model = Linear_QNet(11, 256, 3)
-        self.trainer = QTrainer(self.model, lr=LR, gamma=self.gamma)
+        self.trainer = QTrainer(self.model, lr=learning_rate, gamma=self.gamma)
 
 
     def get_state(self, game):
@@ -64,15 +62,16 @@ class Agent:
             game.food.y < game.head.y,  # food up
             game.food.y > game.head.y  # food down
             ]
-
+        #print('State:', len(state))
+        #print(state)
         return np.array(state, dtype=int)
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done)) # popleft if MAX_MEMORY is reached
 
     def train_long_memory(self):
-        if len(self.memory) > BATCH_SIZE:
-            mini_sample = random.sample(self.memory, BATCH_SIZE) # list of tuples
+        if len(self.memory) > self.batch_size:
+            mini_sample = random.sample(self.memory, self.batch_size) # list of tuples
         else:
             mini_sample = self.memory
 
@@ -100,13 +99,14 @@ class Agent:
         return final_move
 
 
-def train():
+def train(width, height, block_size, speed, discount, max_memory, learning_rate, batch_size):
     plot_scores = []
     plot_mean_scores = []
     total_score = 0
     record = 0
-    agent = Agent()
-    game = SnakeGameAI()
+    agent = Agent(discount, max_memory, learning_rate, batch_size)
+    game = SnakeGameAI(w=width, h=height, block_size=block_size, speed=speed)
+
     while True:
         # get old state
         state_old = agent.get_state(game)
@@ -144,4 +144,23 @@ def train():
 
 
 if __name__ == '__main__':
-    train()
+
+    parser = argparse.ArgumentParser(description='Snake Game Parameters')
+    # AGENT
+    # discount, max_memory, learning_rate, batch_size
+    parser.add_argument('--discount', type=float, default=0.9, help='Agent discount Rate')
+    parser.add_argument('--max_memory', type=int, default=100_000, help='Agent Max memory')
+    parser.add_argument('--batch_size', type=int, default=1000, help='NN Batch size') 
+    parser.add_argument('--learning_rate', type=float, default=0.001, help='NN Learning rate') 
+    
+    # GAME
+    parser.add_argument('--block_size', type=int, default=20, help='Size of the snake blocks')
+    parser.add_argument('--speed', type=int, default=20, help='Speed of the game')
+    parser.add_argument('--width', type=int, default=640, help='Width of the game window')
+    parser.add_argument('--height', type=int, default=480, help='Height of the game window')
+
+    args = parser.parse_args()
+
+    train(args.width, args.height, args.block_size, 
+          args.speed, args.discount, args.max_memory, 
+          args.learning_rate, args.batch_size)

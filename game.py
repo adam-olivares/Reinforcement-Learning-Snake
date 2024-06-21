@@ -23,14 +23,15 @@ BLUE1 = (0, 0, 255)
 BLUE2 = (0, 100, 255)
 BLACK = (0,0,0)
 
-BLOCK_SIZE = 20
-SPEED = 40
+
 
 class SnakeGameAI:
 
-    def __init__(self, w=640, h=480):
+    def __init__(self, w=640, h=480, speed=40, block_size=20):
         self.w = w
         self.h = h
+        self.block_size = block_size
+        self.speed = speed
         # init display
         self.display = pygame.display.set_mode((self.w, self.h))
         pygame.display.set_caption('Snake')
@@ -44,8 +45,8 @@ class SnakeGameAI:
 
         self.head = Point(self.w/2, self.h/2)
         self.snake = [self.head,
-                      Point(self.head.x-BLOCK_SIZE, self.head.y),
-                      Point(self.head.x-(2*BLOCK_SIZE), self.head.y)]
+                      Point(self.head.x-self.block_size, self.head.y),
+                      Point(self.head.x-(2*self.block_size), self.head.y)]
 
         self.score = 0
         self.food = None
@@ -54,8 +55,8 @@ class SnakeGameAI:
 
 
     def _place_food(self):
-        x = random.randint(0, (self.w-BLOCK_SIZE )//BLOCK_SIZE )*BLOCK_SIZE
-        y = random.randint(0, (self.h-BLOCK_SIZE )//BLOCK_SIZE )*BLOCK_SIZE
+        x = random.randint(0, (self.w-self.block_size )//self.block_size )*self.block_size
+        y = random.randint(0, (self.h-self.block_size )//self.block_size )*self.block_size
         self.food = Point(x, y)
         if self.food in self.snake:
             self._place_food()
@@ -91,7 +92,7 @@ class SnakeGameAI:
         
         # 5. update ui and clock
         self._update_ui()
-        self.clock.tick(SPEED)
+        self.clock.tick(self.speed)
         # 6. return game over and score
         return reward, game_over, self.score
 
@@ -100,7 +101,7 @@ class SnakeGameAI:
         if pt is None:
             pt = self.head
         # hits boundary
-        if pt.x > self.w - BLOCK_SIZE or pt.x < 0 or pt.y > self.h - BLOCK_SIZE or pt.y < 0:
+        if pt.x > self.w - self.block_size or pt.x < 0 or pt.y > self.h - self.block_size or pt.y < 0:
             return True
         # hits itself
         if pt in self.snake[1:]:
@@ -113,10 +114,10 @@ class SnakeGameAI:
         self.display.fill(BLACK)
 
         for pt in self.snake:
-            pygame.draw.rect(self.display, BLUE1, pygame.Rect(pt.x, pt.y, BLOCK_SIZE, BLOCK_SIZE))
+            pygame.draw.rect(self.display, BLUE1, pygame.Rect(pt.x, pt.y, self.block_size, self.block_size))
             pygame.draw.rect(self.display, BLUE2, pygame.Rect(pt.x+4, pt.y+4, 12, 12))
 
-        pygame.draw.rect(self.display, RED, pygame.Rect(self.food.x, self.food.y, BLOCK_SIZE, BLOCK_SIZE))
+        pygame.draw.rect(self.display, RED, pygame.Rect(self.food.x, self.food.y, self.block_size, self.block_size))
 
         text = font.render("Score: " + str(self.score), True, WHITE)
         self.display.blit(text, [0, 0])
@@ -143,12 +144,12 @@ class SnakeGameAI:
         x = self.head.x
         y = self.head.y
         if self.direction == Direction.RIGHT:
-            x += BLOCK_SIZE
+            x += self.block_size
         elif self.direction == Direction.LEFT:
-            x -= BLOCK_SIZE
+            x -= self.block_size
         elif self.direction == Direction.DOWN:
-            y += BLOCK_SIZE
+            y += self.block_size
         elif self.direction == Direction.UP:
-            y -= BLOCK_SIZE
+            y -= self.block_size
 
         self.head = Point(x, y)
