@@ -38,6 +38,11 @@ class QTrainer:
         action = torch.tensor(action, dtype=torch.long)
         reward = torch.tensor(reward, dtype=torch.float)
         # (n, x)
+        
+        #print('State:', state.shape)
+        #print('Next state:', state.shape)
+        #print('Action:', action.shape)
+        #print('Reward:', reward.shape)
 
         if len(state.shape) == 1:
             # (1, x)
@@ -49,11 +54,13 @@ class QTrainer:
 
         # 1: predicted Q values with current state
         pred = self.model(state)
+        #print('Prediction:', pred.shape)
+        #print('--------')
 
         target = pred.clone()
         for idx in range(len(done)):
             Q_new = reward[idx]
-            if not done[idx]:
+            if not done[idx]: # if not gameover
                 Q_new = reward[idx] + self.gamma * torch.max(self.model(next_state[idx]))
 
             target[idx][torch.argmax(action[idx]).item()] = Q_new

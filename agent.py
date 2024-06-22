@@ -6,6 +6,8 @@ from game import SnakeGameAI, Direction, Point
 from model import Linear_QNet, QTrainer
 from helper import plot
 import argparse
+import csv
+import os
 
 class Agent:
 
@@ -99,7 +101,12 @@ class Agent:
         return final_move
 
 
-def train(width, height, block_size, speed, discount, max_memory, learning_rate, batch_size):
+def train(width, height, block_size, speed, discount, 
+          max_memory, learning_rate, 
+          batch_size, max_games, retrain=True, suffix=None):
+    
+    model_name = f'model_w={width}_h={height}_d={discount}_m={max_memory}_lr={learning_rate}_b={batch_size}'
+        
     plot_scores = []
     plot_mean_scores = []
     total_score = 0
@@ -107,19 +114,47 @@ def train(width, height, block_size, speed, discount, max_memory, learning_rate,
     agent = Agent(discount, max_memory, learning_rate, batch_size)
     game = SnakeGameAI(w=width, h=height, block_size=block_size, speed=speed)
 
-    while True:
+    max_dist = 9_999_999
+    min_dist = None
+
+    while True and agent.n_games < max_games: 
         # get old state
         state_old = agent.get_state(game)
 
         # get move
         final_move = agent.get_action(state_old)
+        #print(final_move)
 
         # perform move and get new state
+        # reward, game_over, self.score = play_step
         reward, done, score = game.play_step(final_move)
+        old_reward = reward
+        # minimize distance
+        distance = np.abs(game.food.x - game.head.x) + np.abs(game.food.y - game.head.y)
+        if min_dist is None: 
+            min_dist = distance
+        
+        if distance > min_dist:
+            reward -= 0.1
+
+        if distance < min_dist:
+            min_dist = distance
+            #print(f'Distance: {min_dist}')
+
+        if old_reward == 10:
+           max_dist = 9_999_999
+           min_dist = None
+
+        if distance < max_dist:
+            max_dist = distance
+            #print(f'Distance: {max_dist}')
+            #reward += 0.1
+        
         state_new = agent.get_state(game)
 
         # train short memory
-        agent.train_short_memory(state_old, final_move, reward, state_new, done)
+        if retrain:
+            agent.train_short_memory(state_old, final_move, reward, state_new, done)
 
         # remember
         agent.remember(state_old, final_move, reward, state_new, done)
@@ -127,12 +162,16 @@ def train(width, height, block_size, speed, discount, max_memory, learning_rate,
         if done:
             # train long memory, plot result
             game.reset()
+            max_dist = 9_999_999
+            min_dist = None
             agent.n_games += 1
-            agent.train_long_memory()
+            if retrain:
+                agent.train_long_memory()
 
-            if score > record:
-                record = score
-                agent.model.save()
+            if retrain:
+                if score > record:
+                    record = score
+                    agent.model.save(f'{model_name}.pth')
 
             print('Game', agent.n_games, 'Score', score, 'Record:', record)
 
@@ -140,7 +179,17 @@ def train(width, height, block_size, speed, discount, max_memory, learning_rate,
             total_score += score
             mean_score = total_score / agent.n_games
             plot_mean_scores.append(mean_score)
-            plot(plot_scores, plot_mean_scores)
+
+            # Save training results
+            rows = [plot_scores, plot_mean_scores]
+
+            csv_folder_path = './results'
+            filename = os.path.join(csv_folder_path, f'{model_name}.csv')
+            with open(filename, mode='w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerows(rows)
+            
+            plot(plot_scores, plot_mean_scores, filename=os.path.join(csv_folder_path, f'{model_name}.png'))
 
 
 if __name__ == '__main__':
@@ -159,8 +208,10 @@ if __name__ == '__main__':
     parser.add_argument('--width', type=int, default=640, help='Width of the game window')
     parser.add_argument('--height', type=int, default=480, help='Height of the game window')
 
+    parser.add_argument('--max_n_games', type=int, default=1_000, help='Max number of games')
+
     args = parser.parse_args()
 
     train(args.width, args.height, args.block_size, 
           args.speed, args.discount, args.max_memory, 
-          args.learning_rate, args.batch_size)
+          args.learning_rate, args.batch_size, args.max_n_games)
