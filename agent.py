@@ -3,7 +3,7 @@ import random
 import numpy as np
 from collections import deque
 from game import SnakeGameAI, Direction, Point
-from model import Linear_QNet, QTrainer
+from model import Linear_QNet, QTrainer, Conv_QNet
 from helper import plot
 import argparse
 import csv
@@ -116,6 +116,7 @@ def train(width, height, block_size, speed, discount,
 
     max_dist = 9_999_999
     min_dist = None
+    n_iter = 0
 
     while True and agent.n_games < max_games: 
         # get old state
@@ -135,7 +136,8 @@ def train(width, height, block_size, speed, discount,
             min_dist = distance
         
         if distance > min_dist:
-            reward -= 0.1
+            reward -= 2
+            pass
 
         if distance < min_dist:
             min_dist = distance
@@ -158,8 +160,11 @@ def train(width, height, block_size, speed, discount,
 
         # remember
         agent.remember(state_old, final_move, reward, state_new, done)
+        n_iter += 1
 
         if done:
+            print('Number of movements:', n_iter)
+            n_iter = 0
             # train long memory, plot result
             game.reset()
             max_dist = 9_999_999
